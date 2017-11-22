@@ -30,7 +30,9 @@ rp(options)
         $$("a").each((j: number, a: CheerioElement) => {
           const name = a.attribs["href"];
           console.log(
-            name.substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
+            name
+              .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
+              .replace(/_/g, " ")
           );
           //TODO build rest of team row header object
         });
