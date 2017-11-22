@@ -1,0 +1,25 @@
+{
+  "name": "bolamesa",
+  "version": "0.5",
+  "description": "fetch results for different soccer leagues",
+  "main": "app.js",
+  "author": "dcowen91@gmail.com",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc app.ts & node app.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "fs-extra": "^4.0.2",
+    "request": "^2.83.0",
+    "request-promise-native": "^1.0.5",
+    "typescript": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.5",
+    "@types/fs-extra": "^4.0.5",
+    "@types/request": "^2.0.8",
+    "@types/request-promise-native": "^1.0.10",
+    "prettier": "^1.8.2"
+  }
+}
