@@ -8,15 +8,21 @@ interface Team {
   shortName: string;
 }
 
-const plUrl =
-  "http://en.wikipedia.org/w/api.php?action=parse&page=2016%E2%80%9317_Premier_League&prop=text&section=10&format=json";
+const league = "Premier_League";
+const season = encodeURI("2016–17");
+
+// const url = "http://en.wikipedia.org/w/api.php?action=parse&page=2016%E2%80%9317_Premier_League&prop=text&section=10&format=json";
+
+const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${season}_${
+  league
+}&prop=text&section=10&format=json`;
 
 const options = {
-  uri: plUrl,
+  uri: url,
   transform: body => cheerio.load(body)
 };
 
-const omittedKeys = ["href", "title", 'f.c.\\"', 'a.f.c.\\"'];
+//TODO add yargs for league / year
 
 rp(options)
   .then($ => {
@@ -29,14 +35,24 @@ rp(options)
         const $$ = cheerio.load(tr);
         $$("a").each((j: number, a: CheerioElement) => {
           const name = a.attribs["href"];
-          console.log(
-            name
-              .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
-              .replace(/_/g, " ")
-          );
-          //TODO build rest of team row header object
+          const fullName = name
+            .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
+            .replace(/_/g, " ");
+          const team: Team = {
+            index: j,
+            fullName: fullName,
+            shortName: a.firstChild.nodeValue
+          };
+          teams.push(team);
         });
-        //TODO handle data rows
+      } else {
+        const $$ = cheerio.load(tr);
+        $$("td").each((j: number, td: CheerioElement) => {
+          let result = null;
+          console.log(td.lastChild);
+          // if (td.lastChild != null) {
+          // }
+        });
       }
     });
   })
