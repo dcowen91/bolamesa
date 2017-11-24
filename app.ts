@@ -8,30 +8,47 @@ interface Team {
   shortName: string;
 }
 
-const league = "Premier_League";
-const season = encodeURI("2016–17");
+enum Leagues {
+  PREMIERLEAGUE = "Premier_League",
+  BUNDESLIGA = "Bundesliga",
+  LALIGA = "La_Liga",
+  SERIEA = "Serie_A",
+  LIGUE1 = "Ligue_1"
+}
 
-// const url = "http://en.wikipedia.org/w/api.php?action=parse&page=2016%E2%80%9317_Premier_League&prop=text&section=10&format=json";
+enum Seasons {
+  S16_17 = "2016–17",
+  S17_18 = "2017–18"
+}
 
-const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${season}_${
-  league
-}&prop=text&section=10&format=json`;
+function leagueSeasontoSectionMap(league: Leagues, season: Seasons) {
+  if (league === Leagues.PREMIERLEAGUE && season === Seasons.S16_17) {
+    return 10;
+  } else if (league === Leagues.PREMIERLEAGUE && season === Seasons.S16_17) {
+    return 9;
+  }
+}
+
+function transformResults(value: string): number[] {
+  if (!value || value === "a" || value === "\\u2014") {
+    return null;
+  }
+  return !!value ? value.split("\\u2013").map(Number) : null;
+}
+
+const league = Leagues.PREMIERLEAGUE;
+const season = Seasons.S17_18;
+const section = leagueSeasontoSectionMap(league, season);
+const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${encodeURI(
+  season
+)}_${league}&prop=text&section=${section}&format=json`;
 
 const options = {
   uri: url,
   transform: body => cheerio.load(body)
 };
 
-function transformResults(value: string): number[] {
-  //handle result for match against self
-  if (value === "\\u2014") {
-    return null;
-  }
-  //split on unicode em dash and convert to number
-  return value.split("\\u2013").map(Number);
-}
-
-//TODO add yargs for league / year
+//TODO add yargs for league / season
 
 rp(options)
   .then($ => {
@@ -40,7 +57,6 @@ rp(options)
     $("tr").each((i: number, tr: CheerioElement) => {
       const $$ = cheerio.load(tr);
       if (i === 0) {
-        //header row;
         $$("a").each((j: number, a: CheerioElement) => {
           const name = a.attribs["href"];
           const fullName = name
@@ -57,21 +73,20 @@ rp(options)
         const currentRow = new Array();
         $$("td").each((j: number, td: CheerioElement) => {
           const lastChild = td.lastChild;
-          if (!!lastChild.lastChild) {
-            // Handle cells with links for rivalries
+          if (!!lastChild && !!lastChild.lastChild) {
             currentRow.push(transformResults(lastChild.lastChild.nodeValue));
-          } else if (!!lastChild.nodeValue) {
+          } else if (!!lastChild && !!lastChild.nodeValue) {
             currentRow.push(transformResults(lastChild.nodeValue));
+          } else {
+            currentRow.push(null);
           }
         });
         results.push(currentRow);
       }
     });
     const output = { teams, results };
-    const fileName = `results_${league.substr(0, 4)}_${season.substr(
-      0,
-      4
-    )}.json`;
+    const fileName = `results_${league}_${season}.json`;
+
     fs
       .writeJSON(fileName, output)
       .then(
