@@ -24,7 +24,7 @@ enum Seasons {
 function leagueSeasontoSectionMap(league: Leagues, season: Seasons) {
   if (league === Leagues.PREMIERLEAGUE && season === Seasons.S16_17) {
     return 10;
-  } else if (league === Leagues.PREMIERLEAGUE && season === Seasons.S16_17) {
+  } else if (league === Leagues.PREMIERLEAGUE && season === Seasons.S17_18) {
     return 9;
   }
 }
