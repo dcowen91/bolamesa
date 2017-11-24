@@ -23,19 +23,30 @@ enum Seasons {
 }
 
 function leagueSeasontoSectionMap(league: Leagues, season: Seasons) {
-  if (league === Leagues.PREMIERLEAGUE && season === Seasons.S16_17) {
+  if (
+    season === Seasons.S16_17 &&
+    (league === Leagues.PREMIERLEAGUE || league === Leagues.LALIGA)
+  ) {
     return 10;
-  } else if (league === Leagues.PREMIERLEAGUE && season === Seasons.S17_18) {
+  } else if (
+    season === Seasons.S17_18 &&
+    (league === Leagues.PREMIERLEAGUE || league === Leagues.LALIGA)
+  ) {
     return 9;
   } else if (league === Leagues.BUNDESLIGA && season === Seasons.S17_18) {
     return 7;
-  } else if (league === Leagues.BUNDESLIGA && season === Seasons.S16_17) {
+  } else if (
+    (league === Leagues.BUNDESLIGA && season === Seasons.S16_17) ||
+    (league === Leagues.SERIEA && season === Seasons.S17_18)
+  ) {
     return 8;
-  } else if (league === Leagues.LALIGA && season === Seasons.S16_17) {
-    return 10;
-  } else if (league === Leagues.LALIGA && season === Seasons.S17_18) {
-    return 9;
-  } else return 5;
+  } else if (
+    league === Leagues.LIGUE1 ||
+    (league === Leagues.SERIEA && season === Seasons.S16_17)
+  ) {
+    return 6;
+  }
+  return -1;
 }
 
 function transformResults(value: string): number[] {
@@ -95,23 +106,22 @@ const section = leagueSeasontoSectionMap(league, season);
 const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${encodeURI(
   season
 )}_${league}&prop=text&section=${section}&format=json`;
-console.log(url);
 
 const options = {
   uri: url,
   transform: body => cheerio.load(body)
 };
 
-//TODO add yargs for league / season
-
 rp(options)
   .then($ => {
     const results = new Array();
     const teams = new Array();
-    $("tr").each((i: number, tr: CheerioElement) => {
-      const $$ = cheerio.load(tr);
+    const table: CheerioElement = $("table").get(0);
+    const $$ = cheerio.load(table);
+    $$("tr").each((i: number, tr: CheerioElement) => {
+      const $$$ = cheerio.load(tr);
       if (i === 0) {
-        $$("a").each((j: number, a: CheerioElement) => {
+        $$$("a").each((j: number, a: CheerioElement) => {
           const name = a.attribs["href"];
           const fullName = name
             .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
@@ -125,7 +135,7 @@ rp(options)
         });
       } else {
         const currentRow = new Array();
-        $$("td").each((j: number, td: CheerioElement) => {
+        $$$("td").each((j: number, td: CheerioElement) => {
           const lastChild = td.lastChild;
           if (!!lastChild && !!lastChild.lastChild) {
             currentRow.push(transformResults(lastChild.lastChild.nodeValue));
@@ -139,7 +149,7 @@ rp(options)
       }
     });
     const output = { teams, results };
-    const fileName = `results_${league}_${season}.json`;
+    const fileName = `results_${league}_${season.replace("–", "_")}.json`;
 
     fs
       .writeJSON(fileName, output)
