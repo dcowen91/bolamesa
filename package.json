@@ -1,10 +1,14 @@
 {
   "name": "bolamesa",
-  "version": "0.5",
+  "version": "0.5.0",
   "description": "fetch results for different soccer leagues",
   "main": "app.js",
   "author": "dcowen91@gmail.com",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dcowen91/bolamesa"
+  },
   "scripts": {
     "build": "tsc app.ts & node app.js"
   },
