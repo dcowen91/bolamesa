@@ -15,3 +15,31 @@ given a league and a season, generates a JSON file for the teams and current res
 * yarn build -l [League] -s [Season]
 * [League] = Premier League, La Liga, Bundesliga, Ligue 1, Serie A
 * [Season] = 2016-17, 2017-18
+
+## Output
+```
+{
+    "teams": [
+        {
+            "index": 0,
+            "fullName": "Arsenal F.C.",
+            "shortName": "ARS"
+        },
+        {
+            "index": 1,
+            "fullName": "A.F.C. Bournemouth",
+            "shortName": "BOU"
+        },
+        // ...
+    ],
+      "results": [
+        [
+            null,  //ARS V ARS
+            [  // ARS 3:0  BOU
+                3,
+                0
+            ],
+            // ...
+        ]
+      ]
+}
