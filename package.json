@@ -10,13 +10,14 @@
     "url": "https://github.com/dcowen91/bolamesa"
   },
   "scripts": {
-    "build": "tsc app.ts & node app.js"
+    "build": "tslint -p tslint.json & tsc app.ts & node app.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
     "fs-extra": "^4.0.2",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",
+    "tslint": "^5.8.0",
     "typescript": "^2.6.1",
     "yargs": "^10.0.3"
   },

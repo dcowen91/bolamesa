@@ -1,9 +1,9 @@
+import * as cheerio from "cheerio";
 import * as fs from "fs-extra";
 import * as rp from "request-promise-native";
-import * as cheerio from "cheerio";
 import * as yargs from "yargs";
 
-interface Team {
+interface ITeam {
   index: number;
   fullName: string;
   shortName: string;
@@ -73,7 +73,7 @@ yargs
       Leagues.LIGUE1,
       Leagues.SERIEA
     ],
-    coerce: league => {
+    coerce: (league) => {
       if (league.indexOf("bundes") >= 0) {
         return Leagues.BUNDESLIGA;
       } else if (league.indexOf("premier") >= 0) {
@@ -90,7 +90,7 @@ yargs
   .option("season", {
     alias: "s",
     choices: [Seasons.S16_17, Seasons.S17_18],
-    coerce: season => {
+    coerce: (season) => {
       if (season.substr(0, 4) === "2016") {
         return Seasons.S16_17;
       } else if (season.substr(0, 4) === "2017") {
@@ -100,7 +100,7 @@ yargs
   })
   .string("season");
 
-const league = yargs.argv["league"];
+const league = yargs.argv ["league"];
 const season = yargs.argv["season"];
 const section = leagueSeasontoSectionMap(league, season);
 const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${encodeURI(
@@ -109,11 +109,11 @@ const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${encodeURI(
 
 const options = {
   uri: url,
-  transform: body => cheerio.load(body)
+  transform: (body) => cheerio.load(body)
 };
 
 rp(options)
-  .then($ => {
+  .then(($) => {
     const results = new Array();
     const teams = new Array();
     const table: CheerioElement = $("table").get(0);
@@ -126,7 +126,7 @@ rp(options)
           const fullName = name
             .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
             .replace(/_/g, " ");
-          const team: Team = {
+          const team: ITeam = {
             index: j,
             fullName: decodeURI(fullName),
             shortName: a.firstChild.nodeValue
@@ -155,7 +155,7 @@ rp(options)
       .writeJSON(fileName, output)
       .then(
         () => console.log(`SUCCESS: wrote ${fileName}`),
-        err => console.log("ERROR" + err)
+        (err) => console.log("ERROR" + err)
       );
   })
-  .catch(err => console.log(err));
+  .catch((err) => console.log(err));

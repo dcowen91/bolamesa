@@ -15,6 +15,7 @@ given a league and a season, generates a JSON file for the teams and current res
 * yarn build -l [League] -s [Season]
 * [League] = Premier League, La Liga, Bundesliga, Ligue 1, Serie A
 * [Season] = 2016-17, 2017-18
+* this will generate a file:  results_[league]_[season].json
 
 ## Example
 
