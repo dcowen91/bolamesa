@@ -39,5 +39,3 @@ jspm_packages
 # ignore generated js
 app.js
 
-# ignore any generated json
-*.json

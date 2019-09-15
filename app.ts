@@ -1,5 +1,4 @@
 import * as cheerio from "cheerio";
-import * as fs from "fs-extra";
 import * as rp from "request-promise-native";
 import * as yargs from "yargs";
 
@@ -8,8 +7,14 @@ interface ITeam {
   fullName: string;
   shortName: string;
 }
+type IResult = number[] | null;
 
-enum Leagues {
+interface IOutput {
+  teams: ITeam[];
+  results: IResult[][];
+}
+
+enum League {
   PREMIERLEAGUE = "Premier_League",
   BUNDESLIGA = "Bundesliga",
   LALIGA = "La_Liga",
@@ -17,43 +22,34 @@ enum Leagues {
   LIGUE1 = "Ligue_1"
 }
 
-enum Seasons {
+enum Season {
   S16_17 = "2016–17",
-  S17_18 = "2017–18"
+  S17_18 = "2017–18",
+  S18_19 = "2018–19",
+  S19_20 = "2019–20"
 }
 
-function leagueSeasontoSectionMap(league: Leagues, season: Seasons) {
-  if (
-    season === Seasons.S16_17 &&
-    (league === Leagues.PREMIERLEAGUE || league === Leagues.LALIGA)
-  ) {
-    return 10;
-  } else if (
-    season === Seasons.S17_18 &&
-    (league === Leagues.PREMIERLEAGUE || league === Leagues.LALIGA)
-  ) {
-    return 9;
-  } else if (league === Leagues.BUNDESLIGA && season === Seasons.S17_18) {
-    return 7;
-  } else if (
-    (league === Leagues.BUNDESLIGA && season === Seasons.S16_17) ||
-    (league === Leagues.SERIEA && season === Seasons.S17_18)
-  ) {
-    return 8;
-  } else if (
-    league === Leagues.LIGUE1 ||
-    (league === Leagues.SERIEA && season === Seasons.S16_17)
-  ) {
-    return 6;
-  }
-  return -1;
+// Wikipedia stores the "results" section differently per article
+// TODO add other leagues
+const SectionMap: { [key: string]: number } = {
+  [getSeasonKey(League.PREMIERLEAGUE, Season.S19_20)]: 6,
+  [getSeasonKey(League.PREMIERLEAGUE, Season.S18_19)]: 7,
+  [getSeasonKey(League.PREMIERLEAGUE, Season.S17_18)]: 10,
+  [getSeasonKey(League.PREMIERLEAGUE, Season.S16_17)]: 10
+};
+
+function getSeasonKey(league: League, season: Season): string {
+  return `${league}_ ${season}`;
 }
 
-function transformResults(value: string): number[] {
-  if (!value || value === "a" || value === "\\u2014") {
+function transformResults(value: string): IResult {
+  if (value === "a" || value === "\\n" || value === "—\\n") {
     return null;
   }
-  return !!value ? value.split("\\u2013").map(Number) : null;
+  return value
+    .replace("\\n", "")
+    .split("\\u2013")
+    .map(Number);
 }
 
 yargs
@@ -61,61 +57,66 @@ yargs
   .example("$0 --league premierleague --season 2016", "")
   .example("$0 -l premierleague -s 2016", "")
   .describe("league", "premierleague, seriea, ligue1, bundesliga, laliga")
-  .describe("season", "2016, 2017")
+  .describe("season", "2016, 2017, 2018, 2019")
   .require("league", "specify a league")
   .require("season", "specify a season")
   .option("league", {
     alias: "l",
     choices: [
-      Leagues.PREMIERLEAGUE,
-      Leagues.BUNDESLIGA,
-      Leagues.LALIGA,
-      Leagues.LIGUE1,
-      Leagues.SERIEA
+      League.PREMIERLEAGUE,
+      League.BUNDESLIGA,
+      League.LALIGA,
+      League.LIGUE1,
+      League.SERIEA
     ],
-    coerce: (league) => {
+    coerce: league => {
       if (league.indexOf("bundes") >= 0) {
-        return Leagues.BUNDESLIGA;
+        return League.BUNDESLIGA;
       } else if (league.indexOf("premier") >= 0) {
-        return Leagues.PREMIERLEAGUE;
+        return League.PREMIERLEAGUE;
       } else if (league.indexOf("serie") >= 0) {
-        return Leagues.SERIEA;
+        return League.SERIEA;
       } else if (league.indexOf("ligue") >= 0) {
-        return Leagues.LIGUE1;
+        return League.LIGUE1;
       } else if (league.indexOf("liga") >= 0) {
-        return Leagues.LALIGA;
+        return League.LALIGA;
       }
     }
   })
   .option("season", {
     alias: "s",
-    choices: [Seasons.S16_17, Seasons.S17_18],
-    coerce: (season) => {
+    choices: [Season.S16_17, Season.S17_18, Season.S18_19, Season.S19_20],
+    coerce: season => {
       if (season.substr(0, 4) === "2016") {
-        return Seasons.S16_17;
+        return Season.S16_17;
       } else if (season.substr(0, 4) === "2017") {
-        return Seasons.S17_18;
+        return Season.S17_18;
+      } else if (season.substr(0, 4) === "2018") {
+        return Season.S18_19;
+      } else if (season.substr(0, 4) === "2019") {
+        return Season.S19_20;
       }
     }
   })
   .string("season");
 
-const league = yargs.argv ["league"];
-const season = yargs.argv["season"];
-const section = leagueSeasontoSectionMap(league, season);
+const league = yargs.argv["league"] as League;
+const season = yargs.argv["season"] as Season;
+
+const section = SectionMap[getSeasonKey(league, season)];
 const url = `http://en.wikipedia.org/w/api.php?action=parse&page=${encodeURI(
   season
 )}_${league}&prop=text&section=${section}&format=json`;
 
 const options = {
   uri: url,
-  transform: (body) => cheerio.load(body)
+  transform: (body: string) => cheerio.load(body)
 };
 
 rp(options)
-  .then(($) => {
-    const results = new Array();
-    const teams = new Array();
+  .then($ => {
+    const results: IResult[][] = [];
+    const teams: ITeam[] = [];
     const table: CheerioElement = $("table").get(0);
     const $$ = cheerio.load(table);
     $$("tr").each((i: number, tr: CheerioElement) => {
@@ -134,9 +135,9 @@ rp(options)
           teams.push(team);
         });
       } else {
-        const currentRow = new Array();
+        const currentRow: IResult[] = [];
         $$$("td").each((j: number, td: CheerioElement) => {
-          const lastChild = td.lastChild;
+          const lastChild = td.firstChild;
           if (!!lastChild && !!lastChild.lastChild) {
             currentRow.push(transformResults(lastChild.lastChild.nodeValue));
           } else if (!!lastChild && !!lastChild.nodeValue) {
@@ -148,14 +149,8 @@ rp(options)
         results.push(currentRow);
       }
     });
-    const output = { teams, results };
-    const fileName = `results_${league}_${season.replace("–", "_")}.json`;
+    const output: IOutput = { teams, results };
 
-    fs
-      .writeJSON(fileName, output)
-      .then(
-        () => console.log(`SUCCESS: wrote ${fileName}`),
-        (err) => console.log("ERROR" + err)
-      );
+    console.log(JSON.stringify(output));
   })
-  .catch((err) => console.log(err));
+  .catch(err => console.log(err));
