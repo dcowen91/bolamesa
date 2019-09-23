@@ -2,16 +2,22 @@ import * as cheerio from "cheerio";
 import * as rp from "request-promise-native";
 import * as yargs from "yargs";
 
-interface ITeam {
-  index: number;
-  fullName: string;
-  shortName: string;
+interface IMatch {
+  team1Score: number;
+  team2Score: number;
+  team1Id: number;
+  team2Id: number;
 }
-type IResult = number[] | null;
+
+interface ITeam {
+  teamId: number;
+  teamName: string;
+  teamShortName: string;
+}
 
 interface IOutput {
   teams: ITeam[];
-  results: IResult[][];
+  matches: IMatch[];
 }
 
 enum League {
@@ -42,14 +48,25 @@ function getSeasonKey(league: League, season: Season): string {
   return `${league}_ ${season}`;
 }
 
-function transformResults(value: string): IResult {
+function transformResults2(
+  value: string,
+  team1Id: number,
+  team2Id: number
+): IMatch | null {
   if (value === "a" || value === "\\n" || value === "—\\n") {
     return null;
   }
-  return value
+  const arr = value
     .replace("\\n", "")
     .split("\\u2013")
     .map(Number);
+
+  return {
+    team1Score: arr[0],
+    team2Score: arr[1],
+    team1Id,
+    team2Id
+  };
 }
 
 yargs
@@ -115,8 +132,8 @@ const options = {
 
 rp(options)
   .then($ => {
-    const results: IResult[][] = [];
     const teams: ITeam[] = [];
+    const matches: IMatch[] = [];
     const table: CheerioElement = $("table").get(0);
     const $$ = cheerio.load(table);
     $$("tr").each((i: number, tr: CheerioElement) => {
@@ -127,30 +144,35 @@ rp(options)
           const fullName = name
             .substring(name.lastIndexOf("/") + 1, name.lastIndexOf("\\"))
             .replace(/_/g, " ");
-          const team: ITeam = {
-            index: j,
-            fullName: decodeURI(fullName),
-            shortName: a.firstChild.nodeValue
+
+          const team2: ITeam = {
+            teamId: j,
+            teamName: decodeURI(fullName),
+            teamShortName: a.firstChild.nodeValue
           };
-          teams.push(team);
+          teams.push(team2);
         });
       } else {
-        const currentRow: IResult[] = [];
         $$$("td").each((j: number, td: CheerioElement) => {
           const lastChild = td.firstChild;
+          let result = null;
           if (!!lastChild && !!lastChild.lastChild) {
-            currentRow.push(transformResults(lastChild.lastChild.nodeValue));
+            result = transformResults2(lastChild.lastChild.nodeValue, i - 1, j);
           } else if (!!lastChild && !!lastChild.nodeValue) {
-            currentRow.push(transformResults(lastChild.nodeValue));
-          } else {
-            currentRow.push(null);
+            result = transformResults2(lastChild.nodeValue, i - 1, j);
+          }
+          if (result != null) {
+            matches.push(result);
           }
         });
-        results.push(currentRow);
       }
     });
-    const output: IOutput = { teams, results };
 
-    console.log(JSON.stringify(output));
+    const output2: IOutput = {
+      teams,
+      matches
+    };
+
+    console.log(JSON.stringify(output2));
   })
   .catch(err => console.log(err));
